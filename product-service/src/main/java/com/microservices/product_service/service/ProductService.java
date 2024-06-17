@@ -45,6 +45,8 @@ public class ProductService {
             productResponses.add(productResponse);
         }
 
+        System.out.println("All products retreived successfully !");
+
         return productResponses;
     }
 
