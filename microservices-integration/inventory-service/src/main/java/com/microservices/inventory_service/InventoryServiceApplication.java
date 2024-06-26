@@ -29,7 +29,7 @@ public class InventoryServiceApplication implements CommandLineRunner{
 
 		Inventory inventory2 = Inventory.builder()
 				.skuCode("iphone_13_red")
-				.quantity(0)
+				.quantity(20)
 				.build();
 
 		inventoryRepository.save(inventory1);

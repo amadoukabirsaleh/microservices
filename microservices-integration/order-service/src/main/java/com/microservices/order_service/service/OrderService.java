@@ -1,19 +1,25 @@
 package com.microservices.order_service.service;
 
+import com.microservices.order_service.dto.InventoryDto;
 import com.microservices.order_service.dto.OrderDto;
 import com.microservices.order_service.dto.OrderLineItemsDto;
 import com.microservices.order_service.model.Order;
 import com.microservices.order_service.model.OrderLineItems;
 import com.microservices.order_service.repository.OrderRepository;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class OrderService {
 
@@ -22,6 +28,10 @@ public class OrderService {
     @Autowired
     private OrderRepository orderRepository;
 
+    @Autowired
+    private WebClient webClient;
+
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public String placeOrder(OrderDto orderDto){
 
@@ -47,8 +57,39 @@ public class OrderService {
             order.getOrderLineItemsList().add(orderLineItems);
         }
 
-        orderRepository.save(order);
-        return "Order " + order.getId() +" placed sucessfully";
+        //getting the skucodes of OrderLineItems to check them in our inventory service
+        List<String> skuCodes = order.getOrderLineItemsList().stream()
+                .map(OrderLineItems::getSkuCode)
+                .toList();
+
+
+        //Logic to check if all products are the stock and then if so place the order
+        InventoryDto[] inventoryDtoArray =  webClient.get()
+                                                .uri("http://localhost:9002/api/inventory",
+                                                        uriBuilder -> uriBuilder.queryParam("skuCodes",skuCodes).build())
+                                                .retrieve()
+                                                .bodyToMono(InventoryDto[].class)
+                                                .block();
+
+
+
+
+         //Checking if all the orderLineItems are indeed in the stock
+
+        boolean allProductsInStock = Arrays.stream(inventoryDtoArray)
+                        .allMatch(InventoryDto::isInStock);
+
+        if(allProductsInStock) {
+            orderRepository.save(order);
+
+            System.out.println("Order " + order.getId() +" placed sucessfully");
+            return "Order " + order.getId() +" placed sucessfully";
+        }
+        else {
+            throw new IllegalArgumentException("Product is not in stock, please try again later");
+        }
+
+
 
 
     }
