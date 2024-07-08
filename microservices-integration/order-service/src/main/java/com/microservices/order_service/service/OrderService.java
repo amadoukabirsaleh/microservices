@@ -29,7 +29,7 @@ public class OrderService {
     private OrderRepository orderRepository;
 
     @Autowired
-    private WebClient webClient;
+    private WebClient.Builder webClientBuilder;
 
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -64,8 +64,8 @@ public class OrderService {
 
 
         //Logic to check if all products are the stock and then if so place the order
-        InventoryDto[] inventoryDtoArray =  webClient.get()
-                                                .uri("http://localhost:9002/api/inventory",
+        InventoryDto[] inventoryDtoArray =  webClientBuilder.build().get()
+                                                .uri("http://inventory-service/api/inventory",
                                                         uriBuilder -> uriBuilder.queryParam("skuCodes",skuCodes).build())
                                                 .retrieve()
                                                 .bodyToMono(InventoryDto[].class)
